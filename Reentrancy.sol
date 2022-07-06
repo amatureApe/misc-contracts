@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+/*
+Steps to reproduce:
+1. Deploy ReentrantVulnerable
+2. Deposit 1 Ether each from Alice and Bob into ReentrantVunerable
+3. Deploy Attack with address of ReentrantVulnerable
+4. Call Attack.attack sending 1 Ether from Eve. Eve will
+get back 3 Ether (2 stolen from Alice and Bob, and 1
+returned to Eve)
+
+The attack calls ReentrantVulnerable.withdraw multiple times
+before ReentrantVulnerable.withdraw finishes executing
+
+Function calls
+1. Attack.attack
+2. ReentrantVulnerable.deposit
+3. ReentrantVulnerable.withdraw
+4. Attack fallback (receives 1 Ether)
+    a. ReentrantVulnerable.withdraw
+5. Attack fallback (receives 1 Ether)
+    b. ReentrantVulnerable.withdraw
+6. Attack fallback (receives 1 Ether)
+    c. ReentrantVulnerable.withdraw
+*/
+
 contract ReentrantVulnerable {
     mapping(address => uint256) public balances;
 
@@ -8,11 +32,8 @@ contract ReentrantVulnerable {
         balances[msg.sender] += msg.value;
     }
 
-    bool locked;
-
     function withdraw() public payable {
         uint256 bal = balances[msg.sender];
-        locked = true;
         require(bal > 0);
 
         balances[msg.sender] = 0;
@@ -20,7 +41,7 @@ contract ReentrantVulnerable {
         (bool sent, ) = msg.sender.call{value: bal}("");
         require(sent, "Failed to send Ether");
 
-        locked = false;
+        balances[msg.sender] = 0;
     }
 
     function getBalance() public view returns (uint256) {
