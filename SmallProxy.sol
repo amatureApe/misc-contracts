@@ -25,6 +25,24 @@ contract SmallProxy is Proxy {
             implementationAddress := sload(_IMPLEMENTATION_SLOT)
         }
     }
+
+    function getDatatoTransact(uint256 numberToUpdate)
+        public
+        pure
+        returns (bytes memory)
+    {
+        return abi.encodeWithSignature("setValue(uint256)", numberToUpdate);
+    }
+
+    function readStorage()
+        public
+        view
+        returns (uint256 valueAtStorageSlotZero)
+    {
+        assembly {
+            valueAtStorageSlotZero := sload(0)
+        }
+    }
 }
 
 contract ImplementationA {
